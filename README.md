@@ -4,17 +4,13 @@ In this guide we'll learn how to make a Laravel application that uses the `fly-r
 
 We will tell Laravel to use a read replica for queries that simply involve fetching data. The read replica is much closer to the application and so has much lower latency. For queries that involve writing to the database, we will tell Laravel that it should _replay_ those requests in a different region: the region the primary database is located in.
 
-**Note:** To avoid replicating how to package a _general_ Laravel application to run on Fly's global application platform, _that_ was documented in [fly-hello-laravel](https://github.com/). That guide describes the modifications you need to make (add a `Dockerfile`, a `.dockerignore`, a `/docker` folder containing configuration files, and finally a `fly.toml` file to tell Fly what it needs to do).
-
-This guide assumes you have already made those changes to your application to package it and so it is already ready to run on Fly.
+**Note:** To avoid replicating the steps to package a general Laravel application to run on Fly's global application platform, please see [fly-hello-laravel](https://github.com/). This guide assumes you have already made those changes to your application so it is already ready to run on Fly.
 
 ***
 
-To make use of the `fly-replay` header you will need to make the folllowing changes to your Laravel application:
+You will need to make the folllowing changes to files in your Laravel application:
 
 #### fly.toml
-
-The `fly.toml` file tells Fly about your application.
 
 If you recall our previous guide for how to deploy a Laravel application on Fly, this file supports an `[env]` section for environment variables. You need to add two more to this `[env]` block.
 
@@ -40,7 +36,7 @@ The `PRIMARY_REGION` was mentioned above: it's the region the primary database i
 
 The `FLY_REGION` is set by Fly at runtime. Our application needs to know where it is being run from to know whether it needs to replay requests to the database.
 
-Why do we use config file? We need to be able to access Fly environment variables within our application. Laravel's `env()` function should only be used within config files. So we need to use the config helper or facade to access environment variables _outside_ of config files.
+Why do we need to use a config file? We need to be able to access Fly environment variables within our application. Laravel's `env()` function should only be used within config files. So we need to use the config helper or facade to access environment variables _outside_ of config files.
 
 #### app/Exceptions/Handler.php
 
