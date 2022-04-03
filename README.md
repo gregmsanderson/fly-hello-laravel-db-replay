@@ -270,17 +270,17 @@ export default function () {
 }
 ```
 
-We could then run it, choosing the users and duration. We used the most basic test: 1 user, making requests for 10 seconds:
+We then run it, specifying the users and duration. We used the most basic test here: 1 user making requests for 10 seconds:
 
 ```
 k6 run --vus 1 --duration 10s script.js
 ```
 
-To see the improvement made by using a read replica for reads and the `fly-replay` header for writes, we tried the `/read` and `/write` URLs using a single primary database. So a single `DATBASE_URL` (using port 5432) in `config/database.php` without any logic. That was therefore used by the application regardless of where in the world the request was being made.
+To see the improvement made by using a read replica for reads and the `fly-replay` header for writes, we tried the `/read` and `/write` URLs using a single primary database. So a single `DATABASE_URL` (using port 5432) in `config/database.php` without any logic. That was therefore used by the application regardless of where in the world the request was being made.
 
-To provide a large amount of latency, our test vm was in `lhr` and the primary database was in `scl`.
+To provide a large amount of latency, our test vm was in the `lhr` region (UK) and the primary database was in `scl` (Chile).
 
-The key metric to look at is the `http_req_duration` line. The `avg=X` shows the average time per-request.
+One key metric to look at is the `http_req_duration` line. The `avg=X` shows the average time per-request.
 
 ### Reads WITHOUT using a read replica
 
