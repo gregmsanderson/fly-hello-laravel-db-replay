@@ -3,13 +3,10 @@ app = "fly-hello-laravel-db-replay"
 [env]
 APP_ENV = "production"
 APP_URL = "https://fly-hello-laravel-db-replay.fly.dev"
+DB_CONNECTION = "pgsql"
 LOG_CHANNEL = "stderr"
 LOG_LEVEL = "info"
-DB_CONNECTION = "pgsql"
 PRIMARY_REGION = "scl"
-
-#[deploy]
-#release_command = "php /var/www/html/artisan migrate"
 
 [[services]]
 internal_port = 8080
@@ -25,9 +22,9 @@ interval = 5000
 method = "get"
 path = "/"
 protocol = "http"
+restart_limit = 5
 timeout = 2000
 tls_skip_verify = true
-restart_limit = 5
 
 [[services.ports]]
 handlers = ["tls", "http"]

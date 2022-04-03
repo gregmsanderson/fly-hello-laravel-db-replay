@@ -488,15 +488,16 @@ abcdefgh	app    	1     	lhr   	run    	running	2 total, 2 passing	0       	0h10m
 
 ## Run it locally
 
-**Note:** This application is designed to be deployed on Fly's global platform and so the `/read` and `/write` pages we add won't work properly. Requests won't be replayed locally.
+**Note:** This application is designed to be deployed on Fly's global platform and so its `/read` and `/write` pages won't work as intended. Requests won't be replayed when running locally as there is no need to.
 
-If you do want to try it, you will need PHP 8+. You can check the version using `php --version`. And a local, empty PostgreSQL database.
+If you _do_ want to try it you will need PHP 8+. You can check the version using `php --version`. And [composer](https://getcomposer.org/). And a local, empty PostgreSQL database.
 
-1. clone this repo
-2. duplicate `.env.example` naming it `.env`
-3. update the database settings in `.env` to use your local test database
-4. `php artisan key:generate` to generate a new secret key
-5. `php artisan migrate`: in addition to the default tables the Laravel demo application creates (see the `database/migrations` folder) we add a simple _items_ table so we can test reading and writing
-6. `php artisan serve`
+1. Clone this repo
+2. Duplicate `.env.example` naming it `.env`
+3. Update the database settings in `.env` to use your local test database connection (such as its username and password)
+4. Run `composer install` to install its dependencies
+5. Run `php artisan key:generate` to generate a new secret key
+6. Run `php artisan migrate`: in addition to the default tables the Laravel demo application creates (see the `database/migrations` folder) we add a simple _items_ table so we can test reading and writing
+7. Run `php artisan serve` to run a local development server
 
 You should be able to visit `http://localhost:8000` and see the home page.
