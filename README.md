@@ -8,11 +8,11 @@ We will tell Laravel to use a read replica for queries that simply involve fetch
 
 ***
 
-You will need to make the folllowing changes to files in your Laravel application:
+You will need to make the following changes:
 
 #### fly.toml
 
-If you recall our previous guide for how to deploy a Laravel application on Fly, this file supports an `[env]` section for environment variables. You need to add two more to this `[env]` block.
+If you recall our previous guide for how to deploy a Laravel application on Fly, this file supports an `[env]` section for environment variables. You need to add two more.
 
 Set the _DB_CONNECTION_ as _"pgsql"_ to use PostgreSQL. And you will need to specify the region your primary database is in (assuming you already have one) by setting _PRIMARY_REGION_:
 
@@ -73,11 +73,11 @@ if ($fly_region && $primary_region && $fly_region !== $primary_region) {
 
 The application needs to know the database connection settings (the host, port, and so on). Fly provides a single `DATABASE_URL` in an environment variable.
 
-We need to apply some additional logic to decide whether to use that as-is (so, connect to the primary database on port 5432) _or_ whether we should instead connect to a read replica (by using port 5433).
+We need to apply some additional logic to decide whether to use that as-is (which will connect to the primary database using port 5432) _or_ whether we should instead connect to a read replica (using port 5433).
 
 The logic we use is the same as in the exception `Handler.php` file: if we know the region the vm is in _and_ we know the region the primary databse is in, we compare them. If the vm is _not_ in the same region as the primary database, we connect to the read replica. Else we connect to the primary database.
 
-The result is that we get the best read performance as we will always connect to the closest database. And we will improve write performance too since writes will hit the nearby read replica, fail, but be replayed by Fly in the region the primary database is in:
+The result is that we get the best read performance as we will always connect to the closest database. And we will improve write performance too since writes will hit the nearby read replica, fail, _but_ then be replayed by Fly in the region the primary database is in.
 
 ```php
 'pgsql' => [
@@ -100,11 +100,11 @@ The result is that we get the best read performance as we will always connect to
 
 ### Optional
 
-You don't have to make these changes to your Laravel application. We just thought they may be useful.
+You don't have to make these changes to your Laravel application. But they may be useful.
 
 #### app/Http/Middleware/FlyHeaders.php
 
-This is a useful addition to see where a request is being served from: middleware that simply adds a `fly-region` header to every response. That helps see if we are being served from the expected closest region, and also whether database writes are being corrected replayed:
+This middleware adds a `fly-region` header to every response. That helps see if we are being served from the expected closest region and whether database writes are being corrected replayed:
 
 ```php
 public function handle(Request $request, Closure $next)
@@ -118,7 +118,7 @@ public function handle(Request $request, Closure $next)
 
 #### app/Http/Kernel.php
 
-If you added want the middleware that adds a `fly-region` header, we likely want it to run for every HTTP request. So add it to the global stack (the last line here). Your middleware array will likely contain different ones:
+If you added want the middleware that adds a `fly-region` header, we likely want it to run for every HTTP request. So add it to the global stack (the last line below). Your middleware array will likely contain different ones:
 
 ```php
 /**
@@ -146,7 +146,7 @@ We _could_ improve this further by adding additional middleware to help avoid in
 
 ### Our sample application
 
-We built a sample Laravel application to demonstrate using the `fly-replay` header, This includes the changes listed above. It reads and writes some random strings (as items) to the database. That way we can see how fast reads and writes are.
+We built a sample Laravel application to demonstrate using the `fly-replay` header, This includes the changes listed above. It reads and writes some random strings to the database. That way we can see how fast reads and writes are.
 
 So of course you won't make _these_ changes to an existing Laravel application.
 
@@ -203,19 +203,9 @@ A simple page extending the layout showing the written item, with latency.
 
 If you haven't already done so, [install the Fly CLI](https://fly.io/docs/getting-started/installing-flyctl/) and then [log in to Fly](https://fly.io/docs/getting-started/log-in-to-fly/).
 
-You need to have already [created a multi-region PostgreSQL database](https://fly.io/docs/getting-started/multi-region-databases/). That guide explains each step in more detail but essentially what we are doing below is creating a primary database far away, and then a nearby read-replica. We can then test how quickly we can read and write to that database.
+You need to have already [created a multi-region PostgreSQL database](https://fly.io/docs/getting-started/multi-region-databases/). That guide explains each step in more detail. To test the latency we created a primary database far away, and then created a nearby read-replica. We can then test how quickly we can read and write to that database.
 
-To make the multi-region database you will have run several commands like these:
-
-```
-fly pg create --name chaos-postgres --region scl
-
-fly volumes create pg_data -a chaos-postgres --size 1 --region lhr
-
-fly scale count 2 -a chaos-postgres
-```
-
-Armed with that multi-region database, launch the app by running `fly launch` from the application's directory. The CLI will see there is a `fly.toml`. When it asks if you want to copy that, say _Yes_.
+Armed with that multi-region database, launch the app by running `fly launch` from the application's directory. The CLI will see there is an existing `fly.toml`. When it asks if you want to copy that, say _Yes_.
 
 The CLI will spot the `Dockerfile`.
 
@@ -225,13 +215,13 @@ You will be asked for the region to deploy the application in. Pick one closest 
 
 It will ask if you want a database. Say _No_ as you already have one.
 
-It will then prompt you to deploy. Say _No_. Why? In production your Laravel application needs to have a secret key. If you were to deploy now, you would see errors in the logs along the lines of:
+It will then prompt you to deploy now. Say _No_. Why? In production your Laravel application needs to have a secret key. If you were to deploy now, you would see errors in the logs along the lines of:
 
 > No application encryption key has been specified. {"exception":"[object] (Illuminate\\Encryption\\MissingAppKeyException"
 
-So get the `APP_KEY` from your `.env` file (you can generate a new one using `php artisan key:generate`).
+Get the `APP_KEY` from your `.env` file (you can generate a new one using `php artisan key:generate`).
 
-Run `fly secrets set APP-KEY=the-value-of-the-secret-key`. That will stage that secret in Fly, ready to deploy it.
+Then run `fly secrets set APP-KEY=the-value-of-the-secret-key`. That will stage that secret in Fly, ready to deploy it.
 
 Now you can go ahead and run `fly deploy`.
 
@@ -246,15 +236,15 @@ You should see the build progress, the healthchecks pass, and a message to confi
 
 Once it is deployed, sure to attach your multi-region PostgreSQL database _to_ the app. This populates the `DATABASE_URL` environment variable which is the one thing currently missing. So replace this with the name of your database:
 
-`fly pg attach --postgres-app chaos-postgres`
+`fly pg attach --postgres-app your-database-name-goes-here`
 
 You should be able to visit `https://your-app-name.fly.dev` and see the home page.
 
 ### Run a database migration
 
-At this point the sample application is connected to the database however there isn't an `items` table within it. Our example app expects there to be.
+At this point the sample application is connected to the empty database however there isn't an `items` table within it. Our example app expects there to be.
 
-We could have run the migration on deploy but you can also run it using an SSH console on the vm:
+We _could_ have run the migration on deploy but you can also run it using an SSH console on the vm:
 
 ```
 fly ssh console
@@ -266,9 +256,9 @@ Assuming the app was able to connect to the database, you should see the tables 
 
 ### Try a database read and write
 
-The `/read` and `write` routes can be used to test the performance. Normally writes would likely not be done during a `GET` request, however using one makes it simpler to try using a normal web browser.
+Our example application has a `/read` and `/write` route to test their performance. Normally writes would likely not be done during a `GET` request, however using one makes it simpler to try using a normal web browser.
 
-To compare the speed, we tried a simple load test using [k6](https://k6.io/):
+To compare their speed we used a simple test using [k6](https://k6.io/):
 
 ```js
 import http from 'k6/http';
@@ -292,7 +282,7 @@ To provide a large amount of latency, our test vm was in `lhr` and the primary d
 
 The key metric to look at is the `http_req_duration` line. The `avg=X` shows the average time per-request.
 
-### Reads WITHOUT read replica
+### Reads WITHOUT using a read replica
 
 ```
 k6 run --vus 1 --duration 10s script.js
@@ -335,7 +325,7 @@ default ✓ [======================================] 1 VUs  10s
      vus_max........................: 1       min=1      max=1
 ```
 
-### Reads WITH read replica
+### Reads using a read replica
 
 ```
 k6 run --vus 1 --duration 10s script.js
@@ -423,7 +413,7 @@ default ✓ [======================================] 1 VUs  10s
      vus_max........................: 1       min=1      max=1
 ```
 
-### Writes WITH using fly-replay
+### Writes using fly-replay
 
 ```
 k6 run --vus 1 --duration 10s script.js
@@ -466,7 +456,7 @@ default ✓ [======================================] 1 VUs  10s
      vus_max........................: 1       min=1      max=1
 ```
 
-As you can see, the average time is still relatively slow when doing a write however it is a clear improvement over using a connection to a single database URL.
+As you can see, the average request time is still relatively slow when doing a write however it is a clear improvement over using a connection to a single database URL.
 
 ### Bonus commands
 
