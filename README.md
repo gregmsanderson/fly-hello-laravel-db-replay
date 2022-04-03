@@ -4,7 +4,7 @@ In this guide we'll learn how to make a Laravel application that uses the `fly-r
 
 We will tell Laravel to use a read replica for queries that simply involve fetching data. The read replica is much closer to the application and so has much lower latency. For queries that involve writing to the database, we will tell Laravel that it should _replay_ those requests in a different region: the region the primary database is located in.
 
-**Note:** To avoid replicating the steps to package a general Laravel application to run on Fly's global application platform, please see [fly-hello-laravel](https://github.com/). This guide assumes you have already made those changes to your application so it is already ready to run on Fly.
+**Note:** To avoid replicating the steps here to package a general Laravel application to run on Fly's global application platform, please see [fly-hello-laravel](https://github.com/gregmsanderson/fly-hello-laravel). This guide assumes you have already added those necessary files (such as a `Dockerfile`) to make it ready to run on Fly's platform, and only documents the changes needed to use a multi-region database.
 
 ***
 
@@ -118,7 +118,7 @@ public function handle(Request $request, Closure $next)
 
 #### app/Http/Kernel.php
 
-If you added want the middleware that adds a `fly-region` header, we likely want it to run for every HTTP request. So add it to the global stack (the last line below). Your middleware array will likely contain different ones:
+If you are using middleware to add a `fly-region` header, we likely want that to run for every HTTP request. So add it to the global stack (the last line below). Your middleware array will likely contain different ones though:
 
 ```php
 /**
