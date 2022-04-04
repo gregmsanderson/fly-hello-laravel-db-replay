@@ -203,7 +203,9 @@ A simple page extending the layout showing the written item, with latency.
 
 If you haven't already done so, [install the Fly CLI](https://fly.io/docs/getting-started/installing-flyctl/) and then [log in to Fly](https://fly.io/docs/getting-started/log-in-to-fly/).
 
-You need to have already [created a multi-region PostgreSQL database](https://fly.io/docs/getting-started/multi-region-databases/). That guide explains each step in more detail. To test the latency we created a primary database far away, and then created a nearby read-replica. We can then test how quickly we can read and write to that database.
+You need to have already [created a multi-region PostgreSQL database](https://fly.io/docs/getting-started/multi-region-databases/). That guide explains each step in more detail.
+
+To test the latency we created a primary database far away, and then created a nearby read-replica. We can then test how quickly we can read and write to that database.
 
 Armed with that multi-region database, launch the app by running `fly launch` from the application's directory. The CLI will see there is an existing `fly.toml`. When it asks if you want to copy that, say _Yes_.
 
@@ -240,9 +242,11 @@ Once it is deployed, sure to attach your multi-region PostgreSQL database _to_ t
 
 You should be able to visit `https://your-app-name.fly.dev` and see the home page.
 
+There is one additional step for the database to work like this. Your app needs at least one vm in the same region as your primary database. To do that we'll use `fly regions set lhr scl`. And then we'll scale our app to have two vms: one nearby in `lhr` and one in `scl` (where the  primary database is) by running `fly scale count 2`. You can see its status using `fly status`.
+
 ### Run a database migration
 
-At this point the sample application is connected to the empty database however there isn't an `items` table within it. Our example app expects there to be.
+At this point the sample application should be connected to the empty database however there isn't an `items` table within it. Our example app expects there to be.
 
 We _could_ have run the migration on deploy but you can also run it using an SSH console on the vm:
 
