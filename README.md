@@ -1,12 +1,12 @@
 # Use a multi-region database in a Laravel application
 
-In this guide we'll learn how to use Fly's ability to [replay requests](https://fly.io/blog/globally-distributed-postgres/) in order to improve performance of a Laravel application.
+In this guide we'll learn how to use Fly's ability to [replay requests](https://fly.io/blog/globally-distributed-postgres/) in order to improve the performance of a Laravel application.
 
-We will use a read replica for queries that only involve fetching data. The read replica is much closer to the application and so has much lower latency. For queries that involve writing to the database, we will get Laravel to _replay_ those requests in a different region: the region the primary database is located in.
+For queries that involve writing to the database, we will get Laravel to _replay_ those requests in a different region: the region the primary database is located in. We will use a read replica for queries that only involve fetching data. The read replica is much closer to the application and so has much lower latency.
 
 **Note:** To avoid replicating the steps needed to package a Laravel application to run on Fly's global application platform, please see [fly-hello-laravel](https://github.com/gregmsanderson/fly-hello-laravel).
 
-This guide assumes you have _already_ added the files needed to package it ready to run on Fly's platform. It documents the changes needed to use a multi-region database and then goes onto demonstrate using them within a sample application.
+This guide assumes you have _already_ added the files needed to package it ready to run on Fly. It documents the changes needed to use a multi-region database and then goes onto demonstrate using them within a sample application.
 
 ***
 
