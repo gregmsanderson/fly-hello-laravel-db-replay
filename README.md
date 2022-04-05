@@ -1,12 +1,16 @@
-## Build, deploy and run this application on Fly
+# Use a multi-region database in a Laravel application
 
-In this guide we'll learn how to make a Laravel application that uses the `fly-replay` header to improve its performance when using a database.
+In this guide we'll learn how to use Fly's ability to [replay requests](https://fly.io/blog/globally-distributed-postgres/) in order to improve performance of a Laravel application.
 
-We will tell Laravel to use a read replica for queries that simply involve fetching data. The read replica is much closer to the application and so has much lower latency. For queries that involve writing to the database, we will tell Laravel that it should _replay_ those requests in a different region: the region the primary database is located in.
+We will use a read replica for queries that only involve fetching data. The read replica is much closer to the application and so has much lower latency. For queries that involve writing to the database, we will get Laravel to _replay_ those requests in a different region: the region the primary database is located in.
 
-**Note:** To avoid replicating the steps here to package a general Laravel application to run on Fly's global application platform, please see [fly-hello-laravel](https://github.com/gregmsanderson/fly-hello-laravel). This guide assumes you have already added those necessary files (such as a `Dockerfile`) to make it ready to run on Fly's platform, and only documents the changes needed to use a multi-region database.
+**Note:** To avoid replicating the steps needed to package a Laravel application to run on Fly's global application platform, please see [fly-hello-laravel](https://github.com/gregmsanderson/fly-hello-laravel).
+
+This guide assumes you have _already_ added the files needed to package it ready to run on Fly's platform. It documents the changes needed to use a multi-region database and then goes onto demonstrate using them within a sample application.
 
 ***
+
+### Required changes
 
 You will need to make the following changes:
 
@@ -98,7 +102,7 @@ The result is that we get the best read performance as we will always connect to
 
 ***
 
-### Optional
+### Optional changes
 
 You don't have to make these changes to your Laravel application. But they may be useful.
 
@@ -142,11 +146,13 @@ protected $middleware = [
 
 We _could_ improve this further by adding additional middleware to help avoid inconsistencies. Since the downside of writing to a different database than you are reading from is that a subsequent HTTP request may read stale data which has since changed. A way to avoid that would be to return a cookie in the response which contains a threshold time during which read-requests should be fetched from the same database. That trades speed for consitency so it would depend on the requirements of your application whether that was important or even required.
 
+**Note:** If you _already_ have a Laravel application, you can stop here. However if you would like to see these changes applied to a sample application, please continue.
+
 ***
 
-### Our sample application
+### A sample application
 
-We built a sample Laravel application to demonstrate using the `fly-replay` header, This includes the changes listed above. It reads and writes some random strings to the database. That way we can see how fast reads and writes are.
+We built a sample Laravel application to demonstrate using the `fly-replay` header, It reads and writes random strings to the database. That way we can see how fast reads and writes are.
 
 So of course you won't make _these_ changes to an existing Laravel application.
 
@@ -242,11 +248,15 @@ Once it is deployed, sure to attach your multi-region PostgreSQL database _to_ t
 
 You should be able to visit `https://your-app-name.fly.dev` and see the home page.
 
-There is one additional step for the database to work like this. Your app needs at least one vm in the same region as your primary database. To do that we'll use `fly regions set lhr scl`. And then we'll scale our app to have two vms: one nearby in `lhr` and one in `scl` (where the  primary database is) by running `fly scale count 2`. You can see its status using `fly status`.
+For the database reads/writes to work as expected, your app needs at least one vm in the same region as your primary database. To do that we'll use `fly regions set lhr scl`.
+
+And then we'll scale our app to have two vms: one nearby in `lhr` (UK, where we are) and one in `scl` (Chile, where our primary database is in order to demonstrate the latency of having a primary database that's far away) by running `fly scale count 2`.
+
+You can see its status using `fly status`.
 
 ### Run a database migration
 
-At this point the sample application should be connected to the empty database however there isn't an `items` table within it. Our example app expects there to be.
+At this point the sample application should be connected to the empty database. However there isn't an `items` table within it. Our example app expects there to be.
 
 We _could_ have run the migration on deploy but you can also run it using an SSH console on the vm:
 
@@ -281,8 +291,6 @@ k6 run --vus 1 --duration 10s script.js
 ```
 
 To see the improvement made by using a read replica for reads and the `fly-replay` header for writes, we tried the `/read` and `/write` URLs using a single primary database. So a single `DATABASE_URL` (using port 5432) in `config/database.php` without any logic. That was therefore used by the application regardless of where in the world the request was being made.
-
-To provide a large amount of latency, our test vm was in the `lhr` region (UK) and the primary database was in `scl` (Chile).
 
 One key metric to look at is the `http_req_duration` line. The `avg=X` shows the average time per-request.
 
@@ -505,3 +513,38 @@ If you _do_ want to try it you will need PHP 8+. You can check the version using
 7. Run `php artisan serve` to run a local development server
 
 You should be able to visit `http://localhost:8000` and see the home page.
+
+## Questions
+
+#### Laravel supports using a separate read and write connection. Wouldn't that help?
+
+You can indeed specify a separate _read_ and _write_ in `config/database.php`.
+
+Be aware this approach does **not** work. It will return an error:
+
+```
+'pgsql' => [
+    'read' => [
+      'url' => env('DATABASE_URL')
+    ],
+    'write' => [
+      'url' => env('DATABASE_URL')
+    ],
+],
+```
+
+However you should be able to make this work by overriding the port in order to use a read replica:
+
+```
+'pgsql' => [
+    'url' => env('DATABASE_URL'),
+    'read' => [
+      'port' => 5433
+    ],
+],
+```
+
+This approach makes your config simpler and it avoids the need for the exception handler (as writes won't go to a read replica). However:
+
+1. Writes will be slow when run from a region far away from the primary database, as this approach does not take into account where the application is running
+2. Reads will be briefly inconsistent when run from the same region as the primary database, as this approach does not take into account where the primary database is running (it always uses the read replica)
