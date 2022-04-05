@@ -31,4 +31,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'fly' => [
+        'primary_region' => env('PRIMARY_REGION', ''), // set in fly.toml
+        'fly_region' => env('FLY_REGION', ''), // set by Fly at runtime
+    ]
+
 ];

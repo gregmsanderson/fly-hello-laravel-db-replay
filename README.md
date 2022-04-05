@@ -6,7 +6,7 @@ For queries that involve writing to the database, we will get Laravel to _replay
 
 **Note:** To avoid replicating the steps needed to package a Laravel application to run on Fly's global application platform, please see [fly-hello-laravel](https://github.com/gregmsanderson/fly-hello-laravel).
 
-This guide assumes you have _already_ added the files needed to package it ready to run on Fly. It documents the changes needed to use a multi-region database and then goes onto demonstrate using them within a sample application.
+This guide assumes you have _already_ added the files needed to package it ready to run on Fly. It only documents the changes needed to use a _multi-region_ database, and goes onto demonstrate using them within a sample application.
 
 ***
 
@@ -207,23 +207,33 @@ A simple page extending the layout showing the written item, with latency.
 
 ### Deploy the sample application to Fly
 
+To test the difference replaying requests makes, we created a primary database far away and then created a nearby read-replica. We can then test how quickly we can read and write to that database.
+
 If you haven't already done so, [install the Fly CLI](https://fly.io/docs/getting-started/installing-flyctl/) and then [log in to Fly](https://fly.io/docs/getting-started/log-in-to-fly/).
 
-You need to have already [created a multi-region PostgreSQL database](https://fly.io/docs/getting-started/multi-region-databases/). That guide explains each step in more detail.
+You need to have already [created a multi-region PostgreSQL database](https://fly.io/docs/getting-started/multi-region-databases/).
 
-To test the latency we created a primary database far away, and then created a nearby read-replica. We can then test how quickly we can read and write to that database.
+Next (assuming you are using the provided `fly.toml` file) you will need to update that to have _your_ app's name, URL and primary region (which will be different to ours):
 
-Armed with that multi-region database, launch the app by running `fly launch` from the application's directory. The CLI will see there is an existing `fly.toml`. When it asks if you want to copy that, say _Yes_.
+```toml
+name = "your-app-name"
 
-The CLI will spot the `Dockerfile`.
+APP_URL = "https://your-app-name.fly.dev"
 
-You'll be prompted to choose an organization. They are used to share resources between Fly users. Since every Fly user has a personal organization, you could pick that.
+PRIMARY_REGION = "scl"
+```
+
+Run `fly launch` from the application's directory. The CLI will see there is an existing `fly.toml`. When it asks if you want to copy that, say _Yes_.
+
+The CLI will then spot the `Dockerfile`.
+
+You'll be prompted to choose an organization. They are used to share resources between Fly users. Since every Fly user has a personal organization, you could pick that. It needs to be the same one your database is in.
 
 You will be asked for the region to deploy the application in. Pick one closest to you for the best performance.
 
 It will ask if you want a database. Say _No_ as you already have one.
 
-It will then prompt you to deploy now. Say _No_. Why? In production your Laravel application needs to have a secret key. If you were to deploy now, you would see errors in the logs along the lines of:
+It will then prompt you to deploy now. Say _No_. Why? In production your Laravel application needs to have a secret key. If you were to deploy right now, you would see errors in the logs along the lines of:
 
 > No application encryption key has been specified. {"exception":"[object] (Illuminate\\Encryption\\MissingAppKeyException"
 
@@ -238,6 +248,8 @@ Now you can go ahead and run `fly deploy`.
 --> Building image done
 ==> Pushing image to fly
 ...
+1 desired, 1 placed, 1 healthy, 0 unhealthy [health checks: 2 total, 2 passing]
+--> v1 deployed successfully
 ```
 
 You should see the build progress, the healthchecks pass, and a message to confirm the application was successfully deployed.
@@ -246,19 +258,28 @@ Once it is deployed, sure to attach your multi-region PostgreSQL database _to_ t
 
 `fly pg attach --postgres-app your-database-name-goes-here`
 
-You should be able to visit `https://your-app-name.fly.dev` and see the home page.
+Next, for the database reads/writes to work as expected, your app needs at least one vm in the same region as your primary database. To do that we'll run `fly regions set lhr scl`.
 
-For the database reads/writes to work as expected, your app needs at least one vm in the same region as your primary database. To do that we'll use `fly regions set lhr scl`.
+Check those are the only regions listed by using `fly regions list`.
 
-And then we'll scale our app to have two vms: one nearby in `lhr` (UK, where we are) and one in `scl` (Chile, where our primary database is in order to demonstrate the latency of having a primary database that's far away) by running `fly scale count 2`.
+Now we'll scale our test app to have _two_ vms: one nearby in `lhr` (UK, where we are) and one in `scl` (Chile, where our primary database is in order to demonstrate the latency of having a primary database that's far away) by running `fly scale count 2`.
 
-You can see its status using `fly status`.
+You can see its status using `fly status`. You should see two vms, in the chosen regions. It may take a minute for the new one to start running:
+
+```
+Instances
+ID              PROCESS VERSION REGION  DESIRED STATUS  HEALTH CHECKS           RESTARTS        CREATED
+abcdefgh        app     2       lhr     run     running 2 total, 2 passing      0               1m10s ago
+abcdefg1        app     2       scl     run     running 2 total, 2 passing      0               1m11s ago
+```
+
+You should now be able to visit `https://your-app-name.fly.dev` and see Laravel's default home page.
 
 ### Run a database migration
 
-At this point the sample application should be connected to the empty database. However there isn't an `items` table within it. Our example app expects there to be.
+At this point the sample application should be connected to the empty database. However there isn't an `items` table within it. Our example app expects there to be. And so its `/read` and `/write` routes won't work (they will likely return a _500_ error).
 
-We _could_ have run the migration on deploy but you can also run it using an SSH console on the vm:
+We _could_ have run the database migration on deploy but you can also run it using an SSH console on the vm:
 
 ```
 fly ssh console
@@ -548,3 +569,31 @@ This approach makes your config simpler and it avoids the need for the exception
 
 1. Writes will be slow when run from a region far away from the primary database, as this approach does not take into account where the application is running
 2. Reads will be briefly inconsistent when run from the same region as the primary database, as this approach does not take into account where the primary database is running (it always uses the read replica)
+
+#### When I access the read page, I get a 500 error
+
+Check your logs using `fly logs`. Is anything shown there? Double-check your database is in the same Fly organization as your app. If it's not, your app won't be able to resolve its hostname and you will see an error like:
+
+> SQLSTATE[08006] [7] could not translate host name "top2.nearest.of.app-name-here.internal" to address: Name does not resolv
+
+#### When I access the write page, I get a 500 error
+
+First, check the `/read` page works. If so, it must be able to connect to your database. However if writes are not working, that suggests the primary database is not receiving the replayed requests. Is there a vm in that region (from `fly status`?) Is the primary database in that region?
+
+Also, double-check the app knows both. If you visit the `/read` page you should see both are output to show both the `[env]` value _and_ the header value can both be accessed. It should look something like this:
+
+```
+Latency testing
+
+Read 5 item(s) in 20.50ms
+
+JJTGTKUPXe
+rsPR1Euc4k
+mvE5CrRzzD
+FugiESPSmf
+6Mo4L6iQrL
+
+FLY_REGION is lhr
+
+PRIMARY_REGION is scl
+```
