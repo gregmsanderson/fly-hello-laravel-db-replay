@@ -264,7 +264,9 @@ Check those are the only regions listed by using `fly regions list`.
 
 Now we'll scale our test app to have _two_ vms: one nearby in `lhr` (UK, where we are) and one in `scl` (Chile, where our primary database is in order to demonstrate the latency of having a primary database that's far away) by running `fly scale count 2`.
 
-You can see its status using `fly status`. You should see two vms, in the chosen regions. It may take a minute for the new one to start running:
+**Note:** There must be a vm running in the primary region (the one you set above, as `PRIMARY_REGION`). You can not (currently) use this approach with auto-scaling enabled.
+
+You can see its status using `fly status`. You should now see two vms, in the chosen regions. It may take a minute for the new one to start running:
 
 ```
 Instances
