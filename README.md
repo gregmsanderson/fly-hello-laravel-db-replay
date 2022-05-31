@@ -4,7 +4,7 @@ In this guide we'll learn how to use Fly's ability to [replay requests](https://
 
 For queries that involve writing to the database, we will get Laravel to _replay_ those requests in a different region: the region the primary database is located in. We will use a read replica for queries that only involve fetching data. The read replica is much closer to the application and so has much lower latency.
 
-**Note:** To avoid replicating the steps needed to package a Laravel application to run on Fly's global application platform, please see [fly-hello-laravel](https://github.com/gregmsanderson/fly-hello-laravel).
+**Note:** To avoid replicating the steps needed to package a Laravel application to run on Fly's global application platform, please see [fly-hello-laravel](https://github.com/fly-apps/fly-hello-laravel).
 
 This guide assumes you have _already_ added the files needed to package it ready to run on Fly. It only documents the changes needed to use a _multi-region_ database, and goes onto demonstrate using them within a sample application.
 
@@ -239,7 +239,7 @@ It will then prompt you to deploy now. Say _No_. Why? In production your Laravel
 
 Get the `APP_KEY` from your `.env` file (you can generate a new one using `php artisan key:generate`).
 
-Then run `fly secrets set APP-KEY=the-value-of-the-secret-key`. That will stage that secret in Fly, ready to deploy it.
+Then run `fly secrets set APP_KEY=the-value-of-the-secret-key`. That will stage that secret in Fly, ready to deploy it.
 
 Now you can go ahead and run `fly deploy`.
 
