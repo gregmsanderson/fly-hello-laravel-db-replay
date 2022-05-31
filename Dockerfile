@@ -3,14 +3,14 @@ FROM alpine:edge
 RUN apk update
 
 # add useful utilities
-RUN apk add --no-cache curl \
+RUN apk add curl \
     zip \
     unzip \
     ssmtp \
     tzdata
 
 # php, with assorted extensions we likely need
-RUN apk add --no-cache php8 \
+RUN apk add php8 \
     php8-fpm \
     php8-cli \
     php8-pecl-mcrypt \
@@ -48,13 +48,13 @@ RUN apk add --no-cache php8 \
     php8-pecl-redis
 
 # node, for Laravel mix
-RUN apk add --no-cache nodejs npm
+RUN apk add nodejs npm
 
 # supervisor, to support running multiple processes in a single app
-RUN apk add --no-cache supervisor
+RUN apk add supervisor
 
 # nginx, with a custom conf (https://wiki.alpinelinux.org/wiki/Nginx)
-RUN apk add --no-cache nginx && cp /etc/nginx/nginx.conf /etc/nginx/nginx.old.conf && rm -rf /etc/nginx/http.d/default.conf
+RUN apk add nginx && cp /etc/nginx/nginx.conf /etc/nginx/nginx.old.conf && rm -rf /etc/nginx/http.d/default.conf
 
 # htop, which is useful if need to SSH in to the vm
 RUN apk add htop
@@ -92,14 +92,15 @@ RUN mv docker/php.ini /etc/php8/conf.d/php.ini
 RUN mv docker/php-fpm.conf /etc/php8/php-fpm.conf
 RUN mv docker/app.conf /etc/php8/php-fpm.d/app.conf
 
-# mix assets (js/css)
-RUN npm install && npm run prod
-# ... and now don't need /node_modules any more so might as well delete that
+# this app does not need mix however real apps likely will (optimize js/css) so install and then run that:
+RUN npm install
+RUN npx mix --production
+# ... now don't need /node_modules so might as well delete that
 RUN rm -rf node_modules
-# ... and don't need node/npm anymore so might as well delete that, rather than keep it part of the image
+# ... and don't need node and npm so might as well delete them
 RUN apk del nodejs npm
 
-# make sure can upload to /storage
+# maybe: make sure can upload to /storage (don't need to in this app, and that would be ephemeral so not a good idea)
 #RUN chmod -R ug+w /var/www/html/storage
 
 # clear Laravel cache that may be left over
